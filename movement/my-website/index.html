@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alexander Loker Portfolio</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: 'Poppins', sans-serif;
+    }
+    body {
+        background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 100%);
+        color: #ffffff;
+        line-height: 1.6;
+        overflow-x: hidden;
+    }
+    header {
+        padding: 40px 20px 20px 20px;
+        background-color: transparent;
+        text-align: center;
+    }
+    header.hidden {
+        display: none;
+    }
+    header h1 {
+        font-size: 2rem;
+        font-weight: 600;
+        letter-spacing: 1px;
+        color: #ffffff;
+        margin-bottom: 25px;
+        display: none;
+    }
+    nav {
+        margin: 15px 0 40px 0;
+    }
+    nav a {
+        text-decoration: none;
+        color: #ffffff;
+        font-weight: 400;
+        margin: 0 15px;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+        position: relative;
+        cursor: pointer;
+    }
+    nav a::after {
+        content: '';
+        position: absolute;
+        bottom: -5px;
+        left: 0;
+        width: 0;
+        height: 2px;
+        background: linear-gradient(90deg, #dc143c, #ff6b6b);
+        transition: width 0.3s ease;
+    }
+    nav a:hover::after, nav a.active::after {
+        width: 100%;
+    }
+    nav a.active {
+        color: #dc143c;
+    }
+    nav a:hover {
+        color: #ff6b6b;
+    }
+    
+    /* Home/Intro Section */
+    .intro-section {
+        min-height: calc(100vh - 200px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 40px;
+        position: relative;
+    }
+    .intro-container {
+        max-width: 1200px;
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 80px;
+        align-items: center;
+    }
+    .intro-left h2 {
+        font-size: 1.5rem;
+        font-weight: 300;
+        color: #cccccc;
+        margin-bottom: 20px;
+    }
+    .name-display {
+        font-size: 5rem;
+        font-weight: 700;
+        line-height: 1.1;
+        margin-bottom: 30px;
+        background: linear-gradient(135deg, #dc143c 0%, #ff6b6b 50%, #dc143c 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        position: relative;
+        display: inline-block;
+    }
+    .name-display::before {
+        content: '';
+        position: absolute;
+        top: -10px;
+        left: -20px;
+        right: -20px;
+        bottom: -10px;
+        background: linear-gradient(135deg, rgba(220, 20, 60, 0.1), rgba(255, 107, 107, 0.1));
+        border-radius: 20px;
+        z-index: -1;
+        filter: blur(20px);
+    }
+    .intro-tagline {
+        font-size: 1.8rem;
+        font-weight: 300;
+        color: #b8b8ff;
+        margin-bottom: 40px;
+    }
+    .intro-right {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(10px);
+        border-radius: 25px;
+        padding: 40px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    .intro-right h3 {
+        font-size: 1.8rem;
+        font-weight: 600;
+        color: #dc143c;
+        margin-bottom: 20px;
+    }
+    .intro-right p {
+        color: #cccccc;
+        line-height: 1.8;
+        font-weight: 300;
+        margin-bottom: 15px;
+    }
+    
+    /* Section Styles */
+    .section-header {
+        font-weight: 600;
+        font-size: 2.5rem;
+        letter-spacing: 1px;
+        margin-bottom: 15px;
+        color: #ffffff;
+        text-align: center;
+    }
+    .section-underline {
+        width: 150px;
+        height: 3px;
+        background: linear-gradient(90deg, #dc143c, #ff6b6b);
+        margin: 0 auto 60px auto;
+        border-radius: 2px;
+    }
+    
+    /* Projects Section */
+    .home-section {
+        text-align: center;
+        padding: 60px 40px;
+    }
+    .projects-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 40px;
+        padding: 0 40px 80px 40px;
+    }
+    .project-card {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        overflow: hidden;
+        transition: all 0.4s ease;
+        cursor: pointer;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .project-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 15px 40px rgba(220, 20, 60, 0.3);
+        border-color: rgba(220, 20, 60, 0.5);
+    }
+    .project-card img {
+        width: 100%;
+        height: 350px;
+        object-fit: cover;
+        display: block;
+    }
+    .project-card h3 {
+        padding: 25px 25px 15px 25px;
+        font-size: 1.2rem;
+        font-weight: 600;
+        letter-spacing: 1px;
+        color: #ffffff;
+    }
+    .skill-bubbles {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 0 25px 25px 25px;
+    }
+    .skill-bubble {
+        background: rgba(220, 20, 60, 0.2);
+        border: 1px solid rgba(220, 20, 60, 0.5);
+        border-radius: 20px;
+        padding: 6px 14px;
+        font-size: 0.85rem;
+        color: #ff6b6b;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+    .project-card:hover .skill-bubble {
+        background: rgba(220, 20, 60, 0.3);
+        border-color: rgba(220, 20, 60, 0.7);
+    }
+    .skill-bubble.coming-soon {
+        background: rgba(255, 182, 193, 0.2);
+        border: 1px solid rgba(255, 182, 193, 0.5);
+        color: #ffb6c1;
+    }
+    .project-card:hover .skill-bubble.coming-soon {
+        background: rgba(255, 182, 193, 0.3);
+        border-color: rgba(255, 182, 193, 0.7);
+    }
+    .coming-soon-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 25px 10px 25px;
+        font-size: 0.85rem;
+        color: #ffb6c1;
+    }
+    .coming-soon-square {
+        width: 12px;
+        height: 12px;
+        background: rgba(255, 182, 193, 0.5);
+        border: 1px solid rgba(255, 182, 193, 0.7);
+        border-radius: 3px;
+    }
+    
+    /* Blog Page Styles */
+    .blog-page {
+        display: none;
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 40px;
+        text-align: left;
+    }
+    .blog-page.active {
+        display: block;
+    }
+    .blog-page:not(.active) {
+        display: none !important;
+        visibility: hidden;
+        position: absolute;
+        pointer-events: none;
+    }
+    .blog-header {
+        text-align: center;
+        margin-bottom: 40px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    }
+    .blog-header h2 {
+        font-size: 2.5rem;
+        letter-spacing: 1px;
+        margin-bottom: 10px;
+        font-weight: 600;
+    }
+    .blog-image {
+        width: 100%;
+        max-width: 700px;
+        margin: 30px auto;
+        display: block;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .blog-content h3 {
+        color: #dc143c;
+        font-size: 1.8rem;
+        margin-top: 35px;
+        margin-bottom: 15px;
+        font-weight: 600;
+    }
+    .blog-content p {
+        margin-bottom: 20px;
+        line-height: 1.8;
+        color: #cccccc;
+        font-weight: 300;
+    }
+    .back-button {
+        display: inline-block;
+        margin-bottom: 30px;
+        padding: 12px 30px;
+        background: linear-gradient(135deg, #dc143c, #ff6b6b);
+        color: #ffffff;
+        text-decoration: none;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        border-radius: 25px;
+        box-shadow: 0 4px 15px rgba(220, 20, 60, 0.3);
+        cursor: pointer;
+    }
+    .back-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(220, 20, 60, 0.5);
+    }
+    
+    /* About Me Blog */
+    .about-blog {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(10px);
+        border-radius: 25px;
+        padding: 50px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        margin-bottom: 40px;
+    }
+    .about-blog h3 {
+        font-size: 2rem;
+        font-weight: 600;
+        color: #dc143c;
+        margin-bottom: 25px;
+    }
+    .about-blog p {
+        color: #cccccc;
+        line-height: 1.8;
+        font-weight: 300;
+        margin-bottom: 20px;
+    }
+    .activities-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 30px;
+        margin-top: 40px;
+        margin-bottom: 40px;
+    }
+    .activity-card {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: 40px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        transition: all 0.3s ease;
+    }
+    .activity-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 30px rgba(220, 20, 60, 0.2);
+    }
+    .activity-card h3 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        color: #dc143c;
+        margin-bottom: 20px;
+    }
+    .activity-card p {
+        color: #cccccc;
+        line-height: 1.8;
+        font-weight: 300;
+    }
+    .activity-card ul {
+        list-style-type: disc;
+        margin-left: 20px;
+        color: #cccccc;
+    }
+    .activity-card li {
+        margin-bottom: 10px;
+    }
+    .activity-card.hobbies-card {
+        grid-column: 1 / -1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        justify-content: center;
+        max-width: 1600px;
+        margin: 0 auto;
+    }
+    .activity-card.hobbies-card ul {
+        list-style-position: inside;
+        margin-left: 0;
+        text-align: center;
+    }
+    .activity-card.hobbies-card li {
+        list-style-type: none;
+    }
+    .activity-card a {
+        color: #ff6b6b;
+        text-decoration: none;
+        border-bottom: 1px solid transparent;
+        transition: border-bottom 0.3s ease;
+    }
+    .activity-card a:hover {
+        border-bottom: 1px solid #ff6b6b;
+    }
+    .see-more-link {
+        display: inline-block;
+        margin-top: 15px;
+        color: #dc143c;
+        font-weight: 500;
+        cursor: pointer;
+        transition: color 0.3s ease;
+    }
+    .see-more-link:hover {
+        color: #ff6b6b;
+    }
+    
+    .photo-gallery {
+        background: rgba(255, 255, 255, 0.03);
+        backdrop-filter: blur(10px);
+        border-radius: 25px;
+        padding: 50px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        margin-top: 40px;
+    }
+    .photo-gallery h3 {
+        font-size: 2rem;
+        font-weight: 600;
+        color: #dc143c;
+        margin-bottom: 30px;
+        text-align: center;
+    }
+    .photo-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 20px;
+    }
+    .photo-placeholder {
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px dashed rgba(255, 255, 255, 0.2);
+        border-radius: 15px;
+        aspect-ratio: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #888888;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+    }
+    .photo-placeholder:hover {
+        border-color: rgba(220, 20, 60, 0.5);
+        background: rgba(220, 20, 60, 0.05);
+    }
+    
+    /* Resume Styles */
+    .resume-content {
+        max-width: 900px;
+        margin: 0 auto;
+        background-color: #ffffff;
+        color: #000000;
+        padding: 60px 80px;
+        text-align: left;
+        font-family: Calibri, Arial, sans-serif;
+        border-radius: 10px;
+    }
+    .resume-header-section {
+        text-align: center;
+        margin-bottom: 30px;
+        border-bottom: 2px solid #000000;
+        padding-bottom: 15px;
+    }
+    .resume-header-section h1 {
+        font-size: 2rem;
+        margin-bottom: 10px;
+        color: #000000;
+    }
+    .resume-header-section p {
+        margin: 5px 0;
+        color: #000000;
+        font-size: 0.95rem;
+    }
+    .resume-section {
+        margin-bottom: 25px;
+    }
+    .resume-section h2 {
+        font-size: 1.2rem;
+        font-weight: bold;
+        margin-bottom: 10px;
+        color: #000000;
+        border-bottom: 1px solid #000000;
+        padding-bottom: 5px;
+    }
+    .resume-item {
+        margin-bottom: 20px;
+    }
+    .resume-item-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 5px;
+    }
+    .resume-item-header strong {
+        color: #000000;
+        font-weight: bold;
+    }
+    .resume-item-header span {
+        color: #000000;
+        font-style: italic;
+    }
+    .resume-subtitle {
+        font-style: italic;
+        margin: 5px 0;
+        color: #000000;
+    }
+    .resume-content ul {
+        margin: 10px 0 10px 20px;
+        padding: 0;
+        list-style-type: disc;
+    }
+    .resume-content li {
+        margin-bottom: 5px;
+        color: #000000;
+        line-height: 1.5;
+    }
+    .resume-content p {
+        color: #000000;
+        line-height: 1.5;
+        margin: 5px 0;
+    }
+    
+    @media (max-width: 1200px) {
+        .projects-container {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        .intro-container {
+            grid-template-columns: 1fr;
+            gap: 40px;
+        }
+        .photo-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+    @media (max-width: 768px) {
+        header h1 {
+            font-size: 1.8rem;
+        }
+        .name-display {
+            font-size: 3rem;
+        }
+        .projects-container {
+            grid-template-columns: 1fr;
+        }
+        .activities-grid {
+            grid-template-columns: 1fr;
+        }
+        .photo-grid {
+            grid-template-columns: 1fr;
+        }
+        .section-underline {
+            width: 80%;
+        }
+    }
+</style>
+</head>
+<body>
+<header>
+    <h1>Alexander Loker</h1>
+    <nav>
+        <a href="#intro" class="nav-link active">HOME</a>
+        <a href="#projects" class="nav-link">PROJECTS</a>
+        <a href="#about" class="nav-link">ABOUT</a>
+        <a href="Alexander_Loker_Resume (10).pdf" target="_blank" class="nav-link">RESUME</a>
+    </nav>
+</header>
+
+<!-- Intro Section -->
+<section id="intro" class="intro-section">
+    <div class="intro-container">
+        <div class="intro-left">
+            <div class="name-display">Alexander<br>Loker</div>
+        </div>
+        <div class="intro-right">
+            <h3>What I'm Working On</h3>
+            <p>Hey there, I am currently working on the following:</p>
+            <ul style="list-style-type: disc; margin-left: 20px; margin-top: 15px;">
+                <li style="margin-bottom: 12px;">A project focused on developing the mechanics and interactive software of a small robot companion (W.I.P)!</li>
+                <li style="margin-bottom: 12px;">Getting my Mechatronics Engineering Degree</li>
+                <li style="margin-bottom: 12px;">The job search! Contact me @ aloker@uwaterloo.ca!</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- Projects Blog Page -->
+<section id="projects" class="blog-page">
+    <div class="blog-header">
+        <h2>MY PROJECTS</h2>
+    </div>
+    <div class="projects-container">
+        <!-- 1. Companion Robot (now first) -->
+        <div class="project-card" onclick="showBlog('blog3')">
+            <img src="https://i.imgur.com/bfPMDOe.jpeg" alt="Companion Robot">
+            <h3>COMPANION ROBOT - W.I.P.</h3>
+            <div class="skill-bubbles">
+                <span class="skill-bubble">SolidWorks</span>
+                <span class="skill-bubble">Raspberry Pi</span>
+                <span class="skill-bubble">Electromechanical Assembly</span>
+                <span class="skill-bubble">C++/Python</span>
+                <span class="skill-bubble coming-soon">PID Controls</span>
+            </div>
+            <div class="coming-soon-label">
+                <div class="coming-soon-square"></div>
+                <span>Coming Soon</span>
+            </div>
+        </div>
+        <!-- 2. Air Hockey (now second) -->
+        <div class="project-card" onclick="showBlog('blog1')">
+            <img src="https://i.imgur.com/8e4SU1C.png" alt="Air Hockey Robot">
+            <h3>AUTONOMOUS AIR HOCKEY DEFENSE MACHINE</h3>
+            <div class="skill-bubbles">
+                <span class="skill-bubble">C++</span>
+                <span class="skill-bubble">Actuators</span>
+                <span class="skill-bubble">Gantry</span>
+            </div>
+        </div>
+        <!-- 3. Electrochemical Machining (now third) -->
+        <div class="project-card" onclick="showBlog('blog2')">
+            <img src="https://i.imgur.com/Sb3FPiN.png" alt="Electrochemical Machining">
+            <h3>ELECTROCHEMICAL MACHINING MODELING & RESEARCH</h3>
+            <div class="skill-bubbles">
+                <span class="skill-bubble">Blender</span>
+                <span class="skill-bubble">Research & Presentation</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- About Me Blog -->
+<section id="about" class="blog-page">
+    <div class="blog-header">
+        <h2>ABOUT ME</h2>
+    </div>
+    
+    <div class="about-blog">
+        <h3>WHO I AM</h3>
+        <p>Hello! My name is Alexander Loker and I am a first year undergraduate Mechatronics Engineering student at the University of Waterloo! Although I was born in Waterloo, I was raised in California. From my time in the bay area, I spent a lot of my time either at the gym, with my eSports team, or editing/creating things. Nowadays though, I spend most of my time still at the gym, rock climbing, playing guitar, and of course doing homework.</p>
+        <p>Throughout my whole life I have loved designing, building, and creating. Whether it was my five year old self playing with HexBugs, or my much older self integrating my code into my automated air hockey defense machine robot, I have wanted nothing more than a life surrounded by design and creativity.</p>
+    </div>
+    
+    <div class="activities-grid">
+        <div class="activity-card">
+            <h3>ESPORTS</h3>
+            <p>For five years on and off (mainly on), I was an eSports player. Whether that be Overwatch, Valorant, or Marvel Rivals. I worked my way up from being a middling casual team player to a globally ranked recognized player and talent. In tournaments like Overwatch Open Division and MRCS, I placed nationally and internationally, reaching top 16 nationally in Open Division twice under the alias "akiivv" under <a href="https://liquipedia.net/overwatch/Open_Division/2021/Season_2/North_America" target="_blank">Shikigami</a> and <a href="https://liquipedia.net/overwatch/Open_Division/2021/Season_3/North_America" target="_blank">Spectre</a>. I managed to get top 32 in Marvel Rivals.</p>
+            <span class="see-more-link" onclick="showEsportsBlog()">See More →</span>
+        </div>
+        <div class="activity-card">
+            <h3>VIDEO EDITING & DESIGN</h3>
+            <p>I spent around 6 years of my life now editing, and three years of it under an internship. Through this time, I truly fell in love with the process of designing and creating, especially later in my career when I picked up after effects. The ability to create your own effects, the open source community, the freedom to create whatever you want, the potential to solve any problem or task in your own unique expressive way that made your work truly feel like your own. </p>
+            <span class="see-more-link" onclick="showVideoEditingBlog()">See More →</span>
+        </div>
+        <div class="activity-card hobbies-card">
+            <h3>HOBBIES</h3>
+            <ul>
+                <li>Guitar</li>
+                <li>Gym</li>
+                <li>Rock Climbing</li>
+                <li>Fashion</li>
+            </ul>
+        </div>
+    </div>
+</section>
+
+<!-- Blog 1: Air Hockey Defense -->
+<section id="blog1" class="blog-page">
+    <a href="#projects" class="back-button" onclick="showProjects()">← BACK TO PROJECTS</a>
+    <div class="blog-header">
+        <h2>AUTONOMOUS AIR HOCKEY DEFENSE MACHINE</h2>
+    </div>
+    
+    <div class="blog-content">
+        <p>The Air Hockey Defense Machine (AHDM for short) is an autonomous robot built upon a small scale air hockey table intended to block incoming pucks from the opposing human player. To do so, my team and I designed AHDM to have a single axis gantry system for widthwise movement alongside a linear actuator for "hitting" the puck, and one singular distance sensor for calculations and a prediction of what widthwise location to move AHDM's handle to. See images below for clarification.</p>
+        
+        <div style="display: flex; gap: 20px; justify-content: center; align-items: center; margin: 30px 0; flex-wrap: wrap;">
+            <img src="https://i.imgur.com/8e4SU1C.png" alt="Air Hockey Robot Diagram" style="max-width: 400px; width: 100%; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);">
+            <img src="https://i.imgur.com/U1498qC.png" alt="Air Hockey Robot Second Diagram" style="max-width: 400px; width: 100%; border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);">
+        </div>
+        
+        <p>Upon the pressing of the touch sensor, the robot calibrates to the exact center of the gantry, lifts the barrier, and signals the game may begin. Additionally, the optical sensor is now active to detect and prevent any cheating such as the human player crossing the foul line with their handle. Now, the robot waits for the first detection from the distance sensor.</p>
+        
+        <p>Once the distance sensor picks up the first reading of the puck, and the final reading of the puck, using trigonometric principles and constants of the diameter of the puck, length of the table, and distance between the sensor and the gantry, the final x position upon crossing the AHDM's mallet's widthwise line is calculated. Additionally, the estimated time of arrival is calculated, which is important later.</p>
+        
+        <p>As soon as the VEX IQ Brain processes this information, the gantry system consisting of a geared motor, grooved wheels, and a belt precisely and quickly (one rotation spans the width of the table) arrives at the location. Immediately following the arrival of the mallet, AHDM, using a motor and two gears attached to a rod, would spin the gear when appropriate to allow for a proper return of the puck back to the user.</p>
+        
+        <p>Once the puck is returned, the system skips the data, returns back to the middle of the gantry, and restarts the sequence all over again infinitely. To account for error, every 5 detections and returns the barrier lowers, the gantry recalibrates and then the barrier lifts again for further gameplay.</p>
+        
+        <p>Upon a foul or a touching of the touch sensor, the game ends. See the video below for a very brief demonstration of AHDM.</p>
+        
+        <div style="margin: 40px 0;">
+            <iframe width="100%" height="500" src="https://www.youtube.com/embed/yuQoU-QTGQw?rel=0" title="Air Hockey Defense Machine Demo" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen style="border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);"></iframe>
+        </div>
+</section>
+
+<!-- Blog 2: Electrochemical Machining -->
+<section id="blog2" class="blog-page">
+    <a href="#projects" class="back-button" onclick="showProjects()">← BACK TO PROJECTS</a>
+    <div class="blog-header">
+        <h2>ELECTROCHEMICAL MACHINING MODELING & RESEARCH</h2>
+    </div>
+    
+    <div class="blog-content">
+        <p>My solo project of modeling and researching an electrochemical machine was to test my 3D modeling skills, my ability to create a design from scratch, and my ability to effectively research and convey information.</p>
+        
+        <p>The first step was making the model, as shown in the timelapse at the bottom of the blog, this proved to be the most difficult section of the project. It was a giant hurdle to be able to accurately create a model that was not confusing, not overwhelming, aesthetically appealing, while also being accurate. To do this, I looked up multiple different examples, I landed on a basic appealing shell and a more complicated inner section that helped display the works of electrochemical machining.</p>
+        
+        <p>My research was focused on the uses and the science behind electrochemical machines, during my presentation the model proved extremely helpful. Being able to     animate, display, and point out certain regions of the machinery and the point behind it helped me understand the core behind engineering presentations, and how to convey mechanical machinery effectively to an unfamiliar audience.</p>
+        
+        <div style="margin: 40px 0;">
+            <iframe width="100%" height="500" src="https://www.youtube.com/embed/MCpYQ0zq2HY?start=160&rel=0" title="Electrochemical Machining Presentation" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen style="border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);"></iframe>
+        </div>
+    </div>
+</section>
+
+<!-- Blog 3: Companion Robot - W.I.P -->
+<section id="blog3" class="blog-page">
+    <a href="#projects" class="back-button" onclick="showProjects()">← BACK TO PROJECTS</a>
+    <div class="blog-header">
+        <h2>COMPANION ROBOT - W.I.P.</h2>
+    </div>
+    
+    <div class="blog-content">
+        <h3>Ideation</h3>
+        <p>This project is in partnership with Elevait Labs, and is a robot designed to integrate the code the AI engineers are developing into a physical system. We ultimately decided on a small companion-like robot, but by far the most challenging part of this stage was making a unique design with all the features necessary. </p>
+        <p>Ultimately, me and my engineering partner decided on a design that is both friendly, serious, and practical. For the movement of the robot, we chose a tri-omniwheel setup that allows for smooth 360-degree movement, and for the motors something quiet (that I will get into later). Additionally, we plan to integrate an LCD screen into the head of the robot, and owl-like arms into the body for anthropomorphic, friendly characteristics. To allow for detection of people we plan to use an auditorial algorithm via an array of small electret speakers.</p>
+        <p>Below you can see the shell we currently have planned for the robot.</p>
+        <img src="https://i.imgur.com/437FkhM.png" alt="Companion Robot Sketch" class="blog-image">
+        
+        <h3>Base</h3>
+        <p>After many trials and tribulations, the base is complete (for now). Throughout my time working on developing a fully functioning tri-omni wheel movement system, I was forced to learn many important skills.</p>
+        <p>First of all, when developing the omni-wheel, I learned first hand how important it is to use SolidWorks' simulation capabilities and assemblies, and I learned it the hard way. It took a multitude of different prints and test versions of the omni wheel to finally get a version that allowed for proper 360 degree movement via the rollers.</p>
+        <p>Second, once I got all my electronics in sort, I ran into many problems that I had no idea where to solve: Nothing worked! Finally, I figured that the electrical connection was poor with un-soldered GPIO pins, and so I took it upon myself to learn how to solder, and it didn't end up being too hard! Throughout the time after soldering, I was forced to debug using LED's, learn the ins and outs of the microcontroller I am using (Pi Pico), and also the details on constructing a wiring system that is testable, fits into a small area, and most importantly works.</p>
+        <p>And so, I have a video of the setup partially working. You may notice it isn't super clean. Well, this is because I do not want to glue down the motors, and the wheels to the motors, as this would be rash, and I still have more debugging to do, parts to add (far past just movement), and most importantly I have to drop the breadboard.</p>
+        <div style="margin: 40px 0;">
+            <iframe width="100%" height="500" src="https://youtube.com/shorts/xGcwUM80cDc" title="Electrochemical Machining Presentation" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen style="border-radius: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);"></iframe>
+        </div>
+    </div>
+</section>
+
+<!-- eSports Blog -->
+<section id="esports-blog" class="blog-page">
+    <a href="#about" class="back-button" onclick="showAbout()">← BACK TO ABOUT</a>
+    <div class="blog-header">
+        <h2>ESPORTS</h2>
+    </div>
+    
+    <div class="blog-content">
+        <h3>My Journey</h3>
+        <p>For five years on and off (mainly on), I was an eSports player. Whether that be Overwatch, Valorant, or Marvel Rivals. I worked my way up from being a middling casual team player to a globally ranked recognized player and talent. In tournaments like Overwatch Open Division and MRCS, I placed nationally and internationally, reaching top 16 nationally in Open Division twice under the alias "akiivv" under <a href="https://liquipedia.net/overwatch/Open_Division/2021/Season_2/North_America" target="_blank">Shikigami</a> and <a href="https://liquipedia.net/overwatch/Open_Division/2021/Season_3/North_America" target="_blank">Spectre</a>. I managed to get top 32 in MRCS (2025).</p>
+        
+        <h3>Leadership</h3>
+        <p>Regardless, beyond the achievements and statistics, my experience leading 10+ teams has taught me a great deal as to what being a leader looks like. A leader isn't about being loud, it's about making compromise and taking initiative. Throughout my time, I had to deal with countless inner conflicts, many high pressure situations with many ideas, and was forced to take the charge and direct the team towards success. Whether that was simply picking up a player, or calling out a game plan in a tournament match. The responsibilities of organizing scrimmages, VOD reviews, and strategizing were heavy, but also very rewarding.</p>
+        
+        <h3>Application to Engineering</h3>
+        <p>If you're wondering how this applies to my portfolio and engineering in general, I could tell you the obvious: How I learned discipline, how hard work equals results, and how I love to work in teams. Although, what's less obvious is that last point I made in the previous paragraph; strategizing. Team sports, all of them, have strategy involved, a coach draws up a play and the team executes the play ideally perfectly. In team eSports, it's no different. Leading strategical design and playmaking really ties in with my editing and design experience, it was an interesting and unique creative outlet that led to real world results, granted it was behind the scenes, but it felt very very rewarding.</p>
+    </div>
+</section>
+
+<section id="video-editing-blog" class="blog-page">
+    <a href="#about" class="back-button" onclick="showAbout()">← BACK TO ABOUT</a>
+    <div class="blog-header">
+        <h2>VIDEO EDITING & DESIGN</h2>
+    </div>
+    
+<div class="blog-content">
+    <h3>Editing</h3>
+    <p>I spent around 6 years of my life now editing, and three years of it under an internship. Through this time, I truly fell in love with the process of designing and creating, especially later in my career when I picked up after effects. The ability to create your own effects, the open source community, the freedom to create whatever you want, the potential to solve any problem or task in your own unique expressive way that made your work truly feel like your own. That was the magic of editing, and it made me fall in love with the concept of being a future engineer, as I know I have the potential to apply my editing skills further, to apply my creativity and design-oriented thinking towards bigger and more influential projects, problems, and tasks.</p>
+</div>
+</section>
+
+<script>
+    function showBlog(blogId) {
+        document.getElementById('intro').style.display = 'none';
+        document.getElementById('projects').classList.remove('active');
+        document.getElementById('about').classList.remove('active');
+        document.getElementById('esports-blog').classList.remove('active');
+        document.querySelectorAll('.blog-page').forEach(blog => {
+            blog.classList.remove('active');
+        });
+        
+        document.querySelector('header').classList.add('hidden');
+        document.getElementById(blogId).classList.add('active');
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        window.scrollTo(0, 0);
+    }
+    
+    function showIntro() {
+        document.querySelectorAll('.blog-page').forEach(blog => {
+            blog.classList.remove('active');
+        });
+        document.getElementById('esports-blog').classList.remove('active');
+        
+        document.querySelector('header').classList.remove('hidden');
+        document.getElementById('intro').style.display = 'flex';
+        
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        document.querySelector('.nav-link[href="#intro"]').classList.add('active');
+        window.scrollTo(0, 0);
+    }
+    
+    function showProjects() {
+        document.getElementById('intro').style.display = 'none';
+        document.getElementById('about').classList.remove('active');
+        document.getElementById('esports-blog').classList.remove('active');
+        document.getElementById('video-editing-blog').classList.remove('active');
+        document.querySelectorAll('#blog1, #blog2, #blog3').forEach(blog => {
+            blog.classList.remove('active');
+        });
+        
+        document.querySelector('header').classList.remove('hidden');
+        document.getElementById('projects').classList.add('active');
+        
+        document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+        document.querySelector('.nav-link[href="#projects"]').classList.add('active');
+        window.scrollTo(0, 0);
+    }
+    
+    
+function showAbout() {
+        document.getElementById('intro').style.display = 'none';
+        document.getElementById('projects').classList.remove('active');
+        document.querySelectorAll('#blog1, #blog2, #blog3').forEach(blog => {
+        document.getElementById('esports-blog').classList.remove('active');
+        document.getElementById('video-editing-blog').classList.remove('active');
+            blog.classList.remove('active');
+        });
+
+    document.querySelector('header').classList.remove('hidden');
+    document.getElementById('about').classList.add('active');
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    document.querySelector('.nav-link[href="#about"]').classList.add('active');
+    window.scrollTo(0, 0);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelector('.nav-link[href="#intro"]').addEventListener('click', function(e) {
+        e.preventDefault();
+        showIntro();
+    });
+    
+    document.querySelector('.nav-link[href="#projects"]').addEventListener('click', function(e) {
+        e.preventDefault();
+        showProjects();
+    });
+    
+    document.querySelector('.nav-link[href="#about"]').addEventListener('click', function(e) {
+        e.preventDefault();
+        showAbout();
+    });
+    
+});
+
+function showEsportsBlog() {
+    document.getElementById('intro').style.display = 'none';
+    document.getElementById('projects').classList.remove('active');
+    document.getElementById('about').classList.remove('active');
+    document.querySelectorAll('#blog1, #blog2, #blog3').forEach(blog => {
+        blog.classList.remove('active');
+    });
+    
+    document.querySelector('header').classList.add('hidden');
+    document.getElementById('esports-blog').classList.add('active');
+    
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    window.scrollTo(0, 0);
+}
+
+function showVideoEditingBlog() {
+    document.getElementById('intro').style.display = 'none';
+    document.getElementById('projects').classList.remove('active');
+    document.getElementById('about').classList.remove('active');
+    document.getElementById('esports-blog').classList.remove('active');
+    document.querySelectorAll('#blog1, #blog2, #blog3').forEach(blog => {
+        blog.classList.remove('active');
+    });
+    
+    document.querySelector('header').classList.add('hidden');
+    document.getElementById('video-editing-blog').classList.add('active');
+    
+    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+    window.scrollTo(0, 0);
+}
+
+</script>
+</body>
+</html>

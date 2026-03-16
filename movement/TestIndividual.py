@@ -1,14 +1,14 @@
 from machine import Pin, PWM 
 import time
         
-SLP2 = Pin(9, Pin.OUT)
-
+SLP2 = Pin(, Pin.OUT)
+2
 SLP2.value(1)
 
-try:
-    while True:
-        SLP2.value(1)
-        
-except KeyboardInterrupt:
-    SLP2.value(0)
-    print("Stopped.")
+print("ON")
+
+time.sleep(20)
+
+SLP2.value(0)
+
+print("OFF")

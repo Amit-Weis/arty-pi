@@ -5,30 +5,30 @@ import time
 bits = 65535
 
 # Board 1
-SLP1 = Pin(5, Pin.OUT)
-FLT1 = Pin(0, Pin.IN, Pin.PULL_DOWN)
+SLP1 = Pin(2, Pin.OUT)
+FLT1 = Pin(4, Pin.IN, Pin.PULL_DOWN)
 
 # Motor A
-AIN1 = PWM(Pin(26))
-AIN2 = PWM(Pin(27))
-ENC_A_A = Pin(15, Pin.IN, Pin.PULL_UP)
-ENC_A_B = Pin(14, Pin.IN, Pin.PULL_UP)
+AIN1 = PWM(Pin(0))
+AIN2 = PWM(Pin(1))
+ENC_A_A = Pin(27, Pin.IN, Pin.PULL_UP)
+ENC_A_B = Pin(28, Pin.IN, Pin.PULL_UP)
 
 # Motor B
-BIN1 = PWM(Pin(28))
-BIN2 = PWM(Pin(6))
-ENC_B_A = Pin(16, Pin.IN, Pin.PULL_UP)
-ENC_B_B = Pin(17, Pin.IN, Pin.PULL_UP)
+BIN1 = PWM(Pin(8))
+BIN2 = PWM(Pin(9))
+ENC_B_A = Pin(19, Pin.IN, Pin.PULL_UP)
+ENC_B_B = Pin(18, Pin.IN, Pin.PULL_UP)
 
 # Board 2
-SLP2 = Pin(9, Pin.OUT)
-FLT2 = Pin(11, Pin.IN, Pin.PULL_DOWN)
+SLP2 = Pin(10, Pin.OUT)
+FLT2 = Pin(13, Pin.IN, Pin.PULL_DOWN)
 
 # Motor C
-CIN1 = PWM(Pin(4))
-CIN2 = PWM(Pin(7))
-ENC_C_A = Pin(13, Pin.IN, Pin.PULL_UP)
-ENC_C_B = Pin(12, Pin.IN, Pin.PULL_UP)
+CIN1 = PWM(Pin(12))
+CIN2 = PWM(Pin(11))
+ENC_C_A = Pin(17, Pin.IN, Pin.PULL_UP)
+ENC_C_B = Pin(16, Pin.IN, Pin.PULL_UP)
 
 # LED
 LED = Pin(25, Pin.OUT)

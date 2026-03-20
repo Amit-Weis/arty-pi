@@ -5,12 +5,16 @@ import math
 # ── Boundary Box (set/imported externally) ────────────────────────────────────
 # Format: (x_min_mm, y_min_mm, x_max_mm, y_max_mm)
 # Set this before running any motion, e.g.: from boundary_config import BOUNDARY_BOX
-BOUNDARY_BOX = None  # (x_min, y_min, x_max, y_max) in mm
+x_min = -1000
+x_max =  1000
+y_min = -1000
+y_max =  1000
+BOUNDARY_BOX = (x_min, y_min, x_max, y_max)  # (x_min, y_min, x_max, y_max) in mm
 
 # ── Robot Physical Constants ──────────────────────────────────────────────────
 WHEEL_DIAMETER_MM = 58.42
-ENCODER_PPR       = 0      # !! Set this: encoder pulses per wheel revolution
-WHEEL_BASE_MM     = 0.0    # !! Set this: distance from robot centre to wheel contact (mm)
+ENCODER_PPR       = 1200      # !! Set this: encoder pulses per wheel revolution
+WHEEL_BASE_MM     = 61.0    # !! Set this: distance from robot centre to wheel contact (mm)
 
 # MM_PER_TICK is computed once ENCODER_PPR is set above
 MM_PER_TICK = (WHEEL_DIAMETER_MM * math.pi) / ENCODER_PPR if ENCODER_PPR > 0 else 0.0
@@ -25,11 +29,11 @@ FLT1 = Pin(4, Pin.IN)   # subject to change
 
 # ── Motor Board 2 ─────────────────────────────────────────────────────────────
 FLT2 = Pin(13, Pin.IN)  # subject to change
-BIN1 = PWM(Pin(12))
-BIN2 = PWM(Pin(11))
+BIN1 = PWM(Pin(8))
+BIN2 = PWM(Pin(9))
 SLP2 = Pin(10, Pin.OUT)
-CIN1 = PWM(Pin(9))
-CIN2 = PWM(Pin(8))
+CIN1 = PWM(Pin(12))
+CIN2 = PWM(Pin(11))
 
 # ── LED ───────────────────────────────────────────────────────────────────────
 LED = PWM(Pin(25))
@@ -40,14 +44,14 @@ for pwm in [AIN1, AIN2, BIN1, BIN2, CIN1, CIN2]:
 
 # ── Encoder Pins ──────────────────────────────────────────────────────────────
 # !! Change pin numbers below to match your wiring !!
-ENC_A_A = Pin(14, Pin.IN, Pin.PULL_UP)
-ENC_A_B = Pin(15, Pin.IN, Pin.PULL_UP)
+ENC_A_A = Pin(27, Pin.IN, Pin.PULL_UP)
+ENC_A_B = Pin(28, Pin.IN, Pin.PULL_UP)
 
-ENC_B_A = Pin(16, Pin.IN, Pin.PULL_UP)
-ENC_B_B = Pin(17, Pin.IN, Pin.PULL_UP)
+ENC_B_A = Pin(19, Pin.IN, Pin.PULL_UP)
+ENC_B_B = Pin(18, Pin.IN, Pin.PULL_UP)
 
-ENC_C_A = Pin(18, Pin.IN, Pin.PULL_UP)
-ENC_C_B = Pin(19, Pin.IN, Pin.PULL_UP)
+ENC_C_A = Pin(17, Pin.IN, Pin.PULL_UP)
+ENC_C_B = Pin(16, Pin.IN, Pin.PULL_UP)
 
 # ── Encoder Counts ────────────────────────────────────────────────────────────
 encoder_a = 0
@@ -84,14 +88,6 @@ _prev_c = 0
 _SQRT3_2 = math.sqrt(3) / 2.0
 
 def update_pose():
-    """
-    Forward kinematics for a 3-omni-wheel robot.
-    Wheel layout (angles measured from robot +X axis):
-      Motor A: 90°  (front)
-      Motor B: 210° (rear-left)
-      Motor C: 330° (rear-right)
-    !! Adjust these angle assumptions if your layout differs !!
-    """
     global pose_x, pose_y, pose_theta, _prev_a, _prev_b, _prev_c
 
     dA = (encoder_a - _prev_a) * MM_PER_TICK
@@ -165,7 +161,7 @@ def set_motor_c(duty):
     else:
         CIN1.duty_u16(0)
         CIN2.duty_u16(-duty)
-
+        
 # ── Motion Functions ──────────────────────────────────────────────────────────
 def move_to_position(target_a, target_b, target_c, speed):
     while True:
@@ -187,18 +183,37 @@ def move_to_position(target_a, target_b, target_c, speed):
 
     stop()
 
+def move_small(angle, distance_mm, speed):
+    if distance_mm < 0:
+        angle += 180
+        distance_mm = -distance_mm
+
+    # Convert angle to radians and compute target encoder counts (offset from current position)
+    angle_rad = math.radians(angle)
+    target_a = encoder_a + int((math.cos(angle_rad)               * distance_mm) / MM_PER_TICK)
+    target_b = encoder_b + int((math.cos(angle_rad - 2*math.pi/3) * distance_mm) / MM_PER_TICK)
+    target_c = encoder_c + int((math.cos(angle_rad + 2*math.pi/3) * distance_mm) / MM_PER_TICK)
+
+    move_to_position(target_a, target_b, target_c, speed)
+
 def spin_in_place(speed, time_sec):
     deadline = time.ticks_add(time.ticks_ms(), int(time_sec * 1000))
     while time.ticks_diff(deadline, time.ticks_ms()) > 0:
         update_pose()
         if not boundary():
             break
-        set_motor_a(speed)
-        set_motor_b(-speed)
+        set_motor_a(-speed)
+        set_motor_b(speed)
         set_motor_c(speed)
     stop()
 
 # ── Startup ───────────────────────────────────────────────────────────────────
+time.sleep(3)  # allow Thonny to connect before code runs
 motors_enable()
 reset_encoders()
 reset_pose()
+
+spin_in_place(BITS, 5)
+
+stop()
+

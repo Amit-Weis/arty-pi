@@ -196,24 +196,25 @@ def move_small(angle, distance_mm, speed):
 
     move_to_position(target_a, target_b, target_c, speed)
 
-def spin_in_place(speed, time_sec):
+def spin_in_place(speed, time_sec, direction):
+    s = speed if direction == "left" else -speed
     deadline = time.ticks_add(time.ticks_ms(), int(time_sec * 1000))
     while time.ticks_diff(deadline, time.ticks_ms()) > 0:
         update_pose()
         if not boundary():
             break
-        set_motor_a(-speed)
-        set_motor_b(speed)
-        set_motor_c(speed)
+        set_motor_a(-s)
+        set_motor_b(s)
+        set_motor_c(s)
     stop()
 
 # ── Startup ───────────────────────────────────────────────────────────────────
-time.sleep(3)  # allow Thonny to connect before code runs
+time.sleep(10)  # allow Thonny to connect before code runs
 motors_enable()
 reset_encoders()
 reset_pose()
 
-spin_in_place(BITS, 5)
+spin_in_place(40000, 5, "left")
 
 stop()
 

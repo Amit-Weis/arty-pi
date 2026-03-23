@@ -21,6 +21,41 @@ MM_PER_TICK = (WHEEL_DIAMETER_MM * math.pi) / ENCODER_PPR if ENCODER_PPR > 0 els
 
 BITS = 65535  # Max 16-bit PWM duty cycle value
 
+# ── PID Gains ─────────────────────────────────────────────────────────────────
+# Position PID (used in move_to_position / move_small)
+POS_KP = 80.0   # !! Tune: proportional gain (error in ticks → PWM duty)
+POS_KI =  0.5   # !! Tune: integral gain
+POS_KD =  5.0   # !! Tune: derivative gain
+
+# Velocity PID (used in spin_in_place; speed arg = target ticks/sec)
+SPD_KP = 30.0   # !! Tune
+SPD_KI =  1.0   # !! Tune
+SPD_KD =  0.5   # !! Tune
+
+# ── PID Controller ────────────────────────────────────────────────────────────
+class PID:
+    def __init__(self, kp, ki, kd, out_min=-BITS, out_max=BITS):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.out_min = out_min
+        self.out_max = out_max
+        self._integral  = 0.0
+        self._prev_error = 0.0
+
+    def reset(self):
+        self._integral   = 0.0
+        self._prev_error = 0.0
+
+    def compute(self, error, dt):
+        if dt <= 0:
+            dt = 0.001
+        self._integral  += error * dt
+        derivative       = (error - self._prev_error) / dt
+        self._prev_error = error
+        out = self.kp * error + self.ki * self._integral + self.kd * derivative
+        return max(self.out_min, min(self.out_max, out))
+
 # ── Motor Board 1 ─────────────────────────────────────────────────────────────
 AIN1 = PWM(Pin(0))
 AIN2 = PWM(Pin(1))
@@ -163,8 +198,17 @@ def set_motor_c(duty):
         CIN2.duty_u16(-duty)
         
 # ── Motion Functions ──────────────────────────────────────────────────────────
-def move_to_position(target_a, target_b, target_c, speed):
+def move_to_position(target_a, target_b, target_c, max_speed=BITS):
+    pid_a = PID(POS_KP, POS_KI, POS_KD, out_min=-max_speed, out_max=max_speed)
+    pid_b = PID(POS_KP, POS_KI, POS_KD, out_min=-max_speed, out_max=max_speed)
+    pid_c = PID(POS_KP, POS_KI, POS_KD, out_min=-max_speed, out_max=max_speed)
+
+    last_ms = time.ticks_ms()
     while True:
+        now = time.ticks_ms()
+        dt  = time.ticks_diff(now, last_ms) / 1000.0
+        last_ms = now
+
         update_pose()
         if not boundary():
             stop()
@@ -177,9 +221,9 @@ def move_to_position(target_a, target_b, target_c, speed):
         if abs(error_a) < 10 and abs(error_b) < 10 and abs(error_c) < 10:
             break
 
-        set_motor_a(speed if error_a > 0 else -speed if error_a < 0 else 0)
-        set_motor_b(speed if error_b > 0 else -speed if error_b < 0 else 0)
-        set_motor_c(speed if error_c > 0 else -speed if error_c < 0 else 0)
+        set_motor_a(int(pid_a.compute(error_a, dt)))
+        set_motor_b(int(pid_b.compute(error_b, dt)))
+        set_motor_c(int(pid_c.compute(error_c, dt)))
 
     stop()
 
@@ -197,15 +241,38 @@ def move_small(angle, distance_mm, speed):
     move_to_position(target_a, target_b, target_c, speed)
 
 def spin_in_place(speed, time_sec, direction):
-    s = speed if direction == "left" else -speed
+    # speed: target encoder ticks/sec per wheel  !! Tune to your robot
+    # direction: "left" (counter-clockwise) or "right" (clockwise)
+    target = speed if direction == "left" else -speed
+
+    pid_a = PID(SPD_KP, SPD_KI, SPD_KD)
+    pid_b = PID(SPD_KP, SPD_KI, SPD_KD)
+    pid_c = PID(SPD_KP, SPD_KI, SPD_KD)
+
     deadline = time.ticks_add(time.ticks_ms(), int(time_sec * 1000))
+    last_ms = time.ticks_ms()
+    prev_a, prev_b, prev_c = encoder_a, encoder_b, encoder_c
+
     while time.ticks_diff(deadline, time.ticks_ms()) > 0:
+        now = time.ticks_ms()
+        dt  = time.ticks_diff(now, last_ms) / 1000.0
+        last_ms = now
+
         update_pose()
         if not boundary():
             break
-        set_motor_a(-s)
-        set_motor_b(s)
-        set_motor_c(s)
+
+        if dt > 0:
+            vel_a = (encoder_a - prev_a) / dt
+            vel_b = (encoder_b - prev_b) / dt
+            vel_c = (encoder_c - prev_c) / dt
+            prev_a, prev_b, prev_c = encoder_a, encoder_b, encoder_c
+
+            # Motor A runs opposite to B and C for in-place rotation
+            set_motor_a(int(pid_a.compute(-target - vel_a, dt)))
+            set_motor_b(int(pid_b.compute( target - vel_b, dt)))
+            set_motor_c(int(pid_c.compute( target - vel_c, dt)))
+
     stop()
 
 # ── Startup ───────────────────────────────────────────────────────────────────
@@ -214,7 +281,7 @@ motors_enable()
 reset_encoders()
 reset_pose()
 
-spin_in_place(40000, 5, "left")
+spin_in_place(300, 5, "left")  # 300 ticks/sec — adjust to your robot
 
 stop()
 

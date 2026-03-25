@@ -2,35 +2,28 @@ from machine import PWM, Pin
 import time
 import math
 
-# ── Boundary Box (set/imported externally) ────────────────────────────────────
-# Format: (x_min_mm, y_min_mm, x_max_mm, y_max_mm)
-# Set this before running any motion, e.g.: from boundary_config import BOUNDARY_BOX
+# ── Boundary Box ──────────────────────────────────────────────────────────────
 x_min = -1000
 x_max =  1000
 y_min = -1000
 y_max =  1000
-BOUNDARY_BOX = (x_min, y_min, x_max, y_max)  # (x_min, y_min, x_max, y_max) in mm
+BOUNDARY_BOX = (x_min, y_min, x_max, y_max)
 
 # ── Robot Physical Constants ──────────────────────────────────────────────────
 WHEEL_DIAMETER_MM = 58.42
-ENCODER_PPR       = 1200      # !! Set this: encoder pulses per wheel revolution
-WHEEL_BASE_MM     = 61.0    # !! Set this: distance from robot centre to wheel contact (mm)
+ENCODER_PPR       = 1200
+WHEEL_BASE_MM     = 61.0
 
-# MM_PER_TICK is computed once ENCODER_PPR is set above
 MM_PER_TICK = (WHEEL_DIAMETER_MM * math.pi) / ENCODER_PPR if ENCODER_PPR > 0 else 0.0
 
-BITS = 65535  # Max 16-bit PWM duty cycle value
+BITS = 65535
 
 # ── PID Gains ─────────────────────────────────────────────────────────────────
 # Position PID (used in move_to_position / move_small)
-POS_KP = 80.0   # !! Tune: proportional gain (error in ticks → PWM duty)
-POS_KI =  0.5   # !! Tune: integral gain
-POS_KD =  5.0   # !! Tune: derivative gain
+POS_KP = 400.0  # must be > stiction_duty/threshold = ~40000/150 ≈ 267
+POS_KI =  0.5   # !! Tune
+POS_KD =  5.0   # !! Tune
 
-# Velocity PID (used in spin_in_place; speed arg = target ticks/sec)
-SPD_KP = 30.0   # !! Tune
-SPD_KI =  1.0   # !! Tune
-SPD_KD =  0.5   # !! Tune
 
 # ── PID Controller ────────────────────────────────────────────────────────────
 class PID:
@@ -60,10 +53,10 @@ class PID:
 AIN1 = PWM(Pin(0))
 AIN2 = PWM(Pin(1))
 SLP1 = Pin(2, Pin.OUT)
-FLT1 = Pin(4, Pin.IN)   # subject to change
+FLT1 = Pin(4, Pin.IN, Pin.PULL_DOWN)
 
 # ── Motor Board 2 ─────────────────────────────────────────────────────────────
-FLT2 = Pin(13, Pin.IN)  # subject to change
+FLT2 = Pin(13, Pin.IN, Pin.PULL_DOWN)
 BIN1 = PWM(Pin(8))
 BIN2 = PWM(Pin(9))
 SLP2 = Pin(10, Pin.OUT)
@@ -78,7 +71,6 @@ for pwm in [AIN1, AIN2, BIN1, BIN2, CIN1, CIN2]:
     pwm.freq(20000)
 
 # ── Encoder Pins ──────────────────────────────────────────────────────────────
-# !! Change pin numbers below to match your wiring !!
 ENC_A_A = Pin(27, Pin.IN, Pin.PULL_UP)
 ENC_A_B = Pin(28, Pin.IN, Pin.PULL_UP)
 
@@ -94,29 +86,28 @@ encoder_b = 0
 encoder_c = 0
 
 # ── Encoder Interrupt Handlers ────────────────────────────────────────────────
-# Rising edge on A channel; B channel sampled for direction (B=0 → +1, B=1 → -1)
 def enc_a_handler(_pin):
     global encoder_a
-    encoder_a += 1 if ENC_A_B.value() == 0 else -1
+    encoder_a += 1 if ENC_A_A.value() == ENC_A_B.value() else -1
 
 def enc_b_handler(_pin):
     global encoder_b
-    encoder_b += 1 if ENC_B_B.value() == 0 else -1
+    encoder_b += 1 if ENC_B_A.value() == ENC_B_B.value() else -1
 
 def enc_c_handler(_pin):
     global encoder_c
-    encoder_c += 1 if ENC_C_B.value() == 0 else -1
+    encoder_c += 1 if ENC_C_A.value() == ENC_C_B.value() else -1
 
-ENC_A_A.irq(trigger=Pin.IRQ_RISING, handler=enc_a_handler)
-ENC_B_A.irq(trigger=Pin.IRQ_RISING, handler=enc_b_handler)
-ENC_C_A.irq(trigger=Pin.IRQ_RISING, handler=enc_c_handler)
+ENC_A_A.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=enc_a_handler)
+ENC_B_A.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=enc_b_handler)
+ENC_C_A.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=enc_c_handler)
 
 # ── Robot Pose ────────────────────────────────────────────────────────────────
-pose_x     = 0.0  # mm
-pose_y     = 0.0  # mm
-pose_theta = 0.0  # radians
+pose_x     = 0.0
+pose_y     = 0.0
+pose_theta = 0.0
 
-_prev_a = 0  # encoder snapshot used for incremental pose updates
+_prev_a = 0
 _prev_b = 0
 _prev_c = 0
 
@@ -130,48 +121,58 @@ def update_pose():
     dC = (encoder_c - _prev_c) * MM_PER_TICK
     _prev_a, _prev_b, _prev_c = encoder_a, encoder_b, encoder_c
 
-    # Displacement in the robot's local frame
     local_x = (2.0 / 3.0) * (-dA + 0.5 * dB + 0.5 * dC)
     local_y = (2.0 / 3.0) * (-_SQRT3_2 * dB + _SQRT3_2 * dC)
     dtheta  = (dA + dB + dC) / (3.0 * WHEEL_BASE_MM) if WHEEL_BASE_MM > 0 else 0.0
 
-    # Rotate local displacement into world frame using current heading
     cos_t = math.cos(pose_theta)
     sin_t = math.sin(pose_theta)
     pose_x     += local_x * cos_t - local_y * sin_t
     pose_y     += local_x * sin_t + local_y * cos_t
     pose_theta += dtheta
 
+    print("  [pose] x={:.1f} y={:.1f} theta={:.3f} | enc a={} b={} c={}".format(
+        pose_x, pose_y, pose_theta, encoder_a, encoder_b, encoder_c))
+
 # ── Boundary Check ────────────────────────────────────────────────────────────
 def boundary():
-    """Returns True if the robot is inside BOUNDARY_BOX, False if it has exited."""
     if BOUNDARY_BOX is None:
-        return True  # no boundary configured — always allow movement
+        return True
     x_min, y_min, x_max, y_max = BOUNDARY_BOX
-    return x_min <= pose_x <= x_max and y_min <= pose_y <= y_max
+    inside = x_min <= pose_x <= x_max and y_min <= pose_y <= y_max
+    if not inside:
+        print("  BOUNDARY FAILURE! x={:.1f} y={:.1f} (box: x[{},{}] y[{},{}])".format(
+            pose_x, pose_y, x_min, x_max, y_min, y_max))
+    return inside
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 def reset_encoders():
     global encoder_a, encoder_b, encoder_c, _prev_a, _prev_b, _prev_c
     encoder_a = encoder_b = encoder_c = 0
     _prev_a   = _prev_b   = _prev_c   = 0
+    print("[reset_encoders] done")
 
 def reset_pose():
     global pose_x, pose_y, pose_theta
     pose_x = pose_y = pose_theta = 0.0
+    print("[reset_pose] done")
 
 def motors_enable():
     SLP1.value(1)
     SLP2.value(1)
+    print("[motors_enable] SLP1 and SLP2 HIGH")
 
 def motors_disable():
     SLP1.value(0)
     SLP2.value(0)
+    print("[motors_disable] SLP1 and SLP2 LOW")
 
 def stop():
+    print("[stop] CALLED — zeroing all motors")
     set_motor_a(0)
     set_motor_b(0)
     set_motor_c(0)
+    print("[stop] done")
 
 def set_motor_a(duty):
     if duty >= 0:
@@ -190,98 +191,123 @@ def set_motor_b(duty):
         BIN2.duty_u16(-duty)
 
 def set_motor_c(duty):
+    # CIN1/CIN2 are physically swapped — invert here so positive duty = forward
     if duty >= 0:
-        CIN1.duty_u16(duty)
-        CIN2.duty_u16(0)
-    else:
         CIN1.duty_u16(0)
-        CIN2.duty_u16(-duty)
-        
+        CIN2.duty_u16(duty)
+    else:
+        CIN1.duty_u16(-duty)
+        CIN2.duty_u16(0)
+
 # ── Motion Functions ──────────────────────────────────────────────────────────
 def move_to_position(target_a, target_b, target_c, max_speed=BITS):
-    pid_a = PID(POS_KP, POS_KI, POS_KD, out_min=-max_speed, out_max=max_speed)
-    pid_b = PID(POS_KP, POS_KI, POS_KD, out_min=-max_speed, out_max=max_speed)
-    pid_c = PID(POS_KP, POS_KI, POS_KD, out_min=-max_speed, out_max=max_speed)
+    print("[move_to_position] CALLED target=({},{},{}) max_speed={}".format(
+        target_a, target_b, target_c, max_speed))
 
-    last_ms = time.ticks_ms()
+    # PID disabled — open-loop bang-bang: drive each motor at fixed speed toward target
+    # pid_a = PID(POS_KP, POS_KI, POS_KD, out_min=-max_speed, out_max=max_speed)
+    # pid_b = PID(POS_KP, POS_KI, POS_KD, out_min=-max_speed, out_max=max_speed)
+    # pid_c = PID(POS_KP, POS_KI, POS_KD, out_min=-max_speed, out_max=max_speed)
+
+    THRESHOLD = 150
+    deadline = time.ticks_add(time.ticks_ms(), 10000)  # 10s timeout
     while True:
-        now = time.ticks_ms()
-        dt  = time.ticks_diff(now, last_ms) / 1000.0
-        last_ms = now
-
-        update_pose()
-        if not boundary():
-            stop()
+        if time.ticks_diff(deadline, time.ticks_ms()) <= 0:
+            print("[move_to_position] TIMEOUT")
             break
 
         error_a = target_a - encoder_a
         error_b = target_b - encoder_b
         error_c = target_c - encoder_c
 
-        if abs(error_a) < 10 and abs(error_b) < 10 and abs(error_c) < 10:
+        print("  [move_to_position] errors: a={} b={} c={} | enc: a={} b={} c={}".format(
+            error_a, error_b, error_c, encoder_a, encoder_b, encoder_c))
+
+        if abs(error_a) < THRESHOLD and abs(error_b) < THRESHOLD and abs(error_c) < THRESHOLD:
+            print("[move_to_position] TARGET REACHED")
             break
 
-        set_motor_a(int(pid_a.compute(error_a, dt)))
-        set_motor_b(int(pid_b.compute(error_b, dt)))
-        set_motor_c(int(pid_c.compute(error_c, dt)))
+        # Bang-bang: fixed speed in direction of error, 0 if already within threshold
+        da = max_speed if error_a > THRESHOLD else (-max_speed if error_a < -THRESHOLD else 0)
+        db = max_speed if error_b > THRESHOLD else (-max_speed if error_b < -THRESHOLD else 0)
+        dc = max_speed if error_c > THRESHOLD else (-max_speed if error_c < -THRESHOLD else 0)
+
+        set_motor_a(da)
+        set_motor_b(db)
+        set_motor_c(dc)
+
+        time.sleep_ms(20)
 
     stop()
+    print("[move_to_position] DONE")
 
 def move_small(angle, distance_mm, speed):
+    print("[move_small] CALLED angle={} dist={}mm speed={}".format(angle, distance_mm, speed))
     if distance_mm < 0:
         angle += 180
         distance_mm = -distance_mm
 
-    # Convert angle to radians and compute target encoder counts (offset from current position)
     angle_rad = math.radians(angle)
     target_a = encoder_a + int((math.cos(angle_rad)               * distance_mm) / MM_PER_TICK)
     target_b = encoder_b + int((math.cos(angle_rad - 2*math.pi/3) * distance_mm) / MM_PER_TICK)
     target_c = encoder_c + int((math.cos(angle_rad + 2*math.pi/3) * distance_mm) / MM_PER_TICK)
 
+    print("  [move_small] targets: a={} b={} c={}".format(target_a, target_b, target_c))
     move_to_position(target_a, target_b, target_c, speed)
+    print("[move_small] DONE")
 
 def spin_in_place(speed, time_sec, direction):
-    # speed: target encoder ticks/sec per wheel  !! Tune to your robot
-    # direction: "left" (counter-clockwise) or "right" (clockwise)
-    target = speed if direction == "left" else -speed
+    # speed: raw PWM duty (0–65535)
+    # direction: "left" (CCW) or "right" (CW)
+    print("[spin_in_place] CALLED speed={} time={}s direction={}".format(speed, time_sec, direction))
 
-    pid_a = PID(SPD_KP, SPD_KI, SPD_KD)
-    pid_b = PID(SPD_KP, SPD_KI, SPD_KD)
-    pid_c = PID(SPD_KP, SPD_KI, SPD_KD)
+    duty = speed if direction == "left" else -speed
 
     deadline = time.ticks_add(time.ticks_ms(), int(time_sec * 1000))
-    last_ms = time.ticks_ms()
-    prev_a, prev_b, prev_c = encoder_a, encoder_b, encoder_c
+    loop_count = 0
 
     while time.ticks_diff(deadline, time.ticks_ms()) > 0:
-        now = time.ticks_ms()
-        dt  = time.ticks_diff(now, last_ms) / 1000.0
-        last_ms = now
+        if FLT1.value() or FLT2.value():
+            print("  [spin_in_place] FAULT DETECTED! FLT1={} FLT2={}".format(FLT1.value(), FLT2.value()))
+            stop()
+            return
 
-        update_pose()
-        if not boundary():
-            break
+        set_motor_a(duty)
+        set_motor_b(duty)
+        set_motor_c(duty)
 
-        if dt > 0:
-            vel_a = (encoder_a - prev_a) / dt
-            vel_b = (encoder_b - prev_b) / dt
-            vel_c = (encoder_c - prev_c) / dt
-            prev_a, prev_b, prev_c = encoder_a, encoder_b, encoder_c
+        loop_count += 1
+        if loop_count % 10 == 0:
+            remaining = time.ticks_diff(deadline, time.ticks_ms())
+            print("  [spin_in_place] loop={} duty={} enc a={} b={} c={} FLT1={} FLT2={} remaining={}ms".format(
+                loop_count, duty, encoder_a, encoder_b, encoder_c,
+                FLT1.value(), FLT2.value(), remaining))
 
-            # Motor A runs opposite to B and C for in-place rotation
-            set_motor_a(int(pid_a.compute(-target - vel_a, dt)))
-            set_motor_b(int(pid_b.compute( target - vel_b, dt)))
-            set_motor_c(int(pid_c.compute( target - vel_c, dt)))
+        time.sleep_ms(50)
 
     stop()
+    print("[spin_in_place] DONE — ran {} loops".format(loop_count))
 
 # ── Startup ───────────────────────────────────────────────────────────────────
-time.sleep(10)  # allow Thonny to connect before code runs
+print("=== STARTUP ===")
+time.sleep(10)
+print("[startup] enabling motors")
 motors_enable()
+print("[startup] resetting encoders and pose")
 reset_encoders()
 reset_pose()
+print("[startup] FLT1={} FLT2={}".format(FLT1.value(), FLT2.value()))
+print("[startup] calling spin_in_place")
 
-spin_in_place(300, 5, "left")  # 300 ticks/sec — adjust to your robot
-
+try:
+    move_small(0,   200, 45000)   # forward 200mm
+    time.sleep(1)
+    move_small(180, 200, 45000)   # backward 200mm
+    time.sleep(1)
+    move_small(90,  200, 45000)   # strafe right 200mm
+    time.sleep(1)
+    move_small(270, 200, 45000)   # strafe left 200mm
+    print("=== DONE ===")
+except KeyboardInterrupt:
+    print("=== STOPPED BY USER ===")
 stop()
-

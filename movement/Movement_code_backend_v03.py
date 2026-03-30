@@ -170,45 +170,10 @@ def stopAll():
     SLP1.value(0)
     SLP2.value(0)
 
-def forward(speed):
-    moveLeftCw(speed)
-    moveRightCw(speed)
+def stopSpin():
     moveFrontCw(0)
-
-def backward(speed):
-    moveLeftCw(-speed)
-    moveRightCw(-speed)
-    moveFrontCw(0)
-
-def right(speed):
-    moveLeftCw(-speed)
-    moveRightCw(speed)
-    moveFrontCw(-speed)
-
-def left(speed):
-    moveLeftCw(speed)
-    moveRightCw(-speed)
-    moveFrontCw(speed)
-
-def forward_right(speed):
-    moveLeftCw(speed)
     moveRightCw(0)
-    moveFrontCw(speed)
-
-def forward_left(speed):
     moveLeftCw(0)
-    moveRightCw(speed)
-    moveFrontCw(-speed)
-
-def backward_right(speed):
-    moveLeftCw(-speed)
-    moveRightCw(0)
-    moveFrontCw(-speed)
-
-def backward_left(speed):
-    moveLeftCw(0)
-    moveRightCw(-speed)
-    moveFrontCw(speed)
 
 def enableMotors():
     SLP1.value(1)
@@ -256,47 +221,69 @@ def spin_to_angle(target_angle, speed):
                         break
             update_pose()
 
-import math
+def forward(speed, duration):
+    start = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
+        moveLeftCw(-speed)
+        moveRightCw(speed)
+        moveFrontCw(0)
+    stopSpin()
 
-def forward(speed):
-    moveLeftCw(speed)
-    moveRightCw(speed)
-    moveFrontCw(0)
+def backward(speed, duration):
+    start = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
+        moveLeftCw(speed)
+        moveRightCw(-speed)
+        moveFrontCw(0)
+    stopSpin()
 
-def backward(speed):
-    moveLeftCw(-speed)
-    moveRightCw(-speed)
-    moveFrontCw(0)
+def right(speed, duration):
+    start = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
+        moveLeftCw(int(-speed*0.67)) #empirically derive
+        moveRightCw(int(-speed*0.67))
+        moveFrontCw(int(speed))
+    stopSpin()
 
-def right(speed):
-    moveLeftCw(-speed)
-    moveRightCw(speed)
-    moveFrontCw(-speed)
+def left(speed, duration):
+    start = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
+        moveLeftCw(int(speed*0.7)) #emperically derive
+        moveRightCw(int(speed*0.7))
+        moveFrontCw(int(-speed))
+    stopSpin()
 
-def left(speed):
-    moveLeftCw(speed)
-    moveRightCw(-speed)
-    moveFrontCw(speed)
+def forward_right(speed, duration):
+    start = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
+        moveLeftCw(speed)
+        moveRightCw(0)
+        moveFrontCw(-speed)
+    stopSpin()
 
-def forward_right(speed):
-    moveLeftCw(speed)
-    moveRightCw(0)
-    moveFrontCw(speed)
+def forward_left(speed, duration):
+    start = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
+        moveLeftCw(0)
+        moveRightCw(speed)
+        moveFrontCw(-speed)
+    stopSpin()
 
-def forward_left(speed):
-    moveLeftCw(0)
-    moveRightCw(speed)
-    moveFrontCw(-speed)
+def backward_right(speed, duration):
+    start = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
+        moveLeftCw(-speed)
+        moveRightCw(0)
+        moveFrontCw(-speed)
+    stopSpin()
 
-def backward_right(speed):
-    moveLeftCw(-speed)
-    moveRightCw(0)
-    moveFrontCw(-speed)
-
-def backward_left(speed):
-    moveLeftCw(0)
-    moveRightCw(-speed)
-    moveFrontCw(speed)
+def backward_left(speed, duration):
+    start = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
+        moveLeftCw(0)
+        moveRightCw(-speed)
+        moveFrontCw(speed)
+    stopSpin()
 
 #Main code
 print("=== STARTUP ===")
@@ -310,22 +297,9 @@ print("[startup] FLT1={} FLT2={}".format(FLT1.value(), FLT2.value()))
 print("[startup] calling move_to right")
 
 try:
-    move_to_position(200, 0, 55000) # move right (relative to looking inwards on front wheel)
-    print("calling move_to diagonally forward-right")
-    time.sleep(2)
-    move_to_position(-200, 200, 55000) # move diagonally forward-right
-    print("calling move_to left")
-    time.sleep(2)
-    move_to_position(-200, 0, 55000) # move left
-    print("calling move_to diagonally forward-left")
-    time.sleep(2)
-    move_to_position(0, 200, 55000) # move forward
-    print("calling move_to origin")
-    time.sleep(2)
-    move_to_position(0, 0, 55000) # move back to origin
-    print("calling move_to backward")
-    time.sleep(2)
-    move_to_position(0, -200, 55000) # move backward
+    forward_right(60000, 1)
+    time.sleep(5)
+
     stopAll()
 
 except KeyboardInterrupt:

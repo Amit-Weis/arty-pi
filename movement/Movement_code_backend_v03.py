@@ -3,11 +3,11 @@ import time
 import math
 
 # Global Constants (mm)
-wheelDiameter = 58.42
-distFromCenter = 61
-CPR = 12 
+wheelDiameter = 58.59
+distFromCenter = 61.4
+CPR = 12
 gearRatio = 100.37
-ticksPerWheelRev = CPR * gearRatio
+ticksPerWheelRev = 626  # empirically measured: one full wheel revolution (Pololu 12CPR = quadrature, effective 6 counts/rev single-channel × ~104.3:1 actual ratio)
 bits = 65535
 sqrt3Inverse = 1.0 / math.sqrt(3)   # ≈ 0.5774
  
@@ -84,9 +84,9 @@ def update_encoder_left(pin):
     else:
         encoder_l -= 1
 
-ENC_R_A.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=update_encoder_right)
-ENC_F_A.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=update_encoder_front)
-ENC_L_A.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=update_encoder_left)
+ENC_R_A.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=update_encoder_right, hard=True)
+ENC_F_A.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=update_encoder_front, hard=True)
+ENC_L_A.irq(trigger=Pin.IRQ_RISING | Pin.IRQ_FALLING, handler=update_encoder_left, hard=True)
 
 # Robot Position and Orientation (every CW/CCW is from the outside looking in)
 x = 0.0
@@ -108,15 +108,19 @@ def update_pose():
     prevFront = encoder_f
     prevLeft = encoder_l
 
-    # the y-axis is perp to front (so when front goes, x changes positively)
-    deltaX = (changeFront - changeLeft * 0.5 + changeRight * 0.5)
-    deltaY = (+changeLeft * SQRT3_2 - changeRight * SQRT3_2)
+    # Local-frame displacement (derived from 3-wheel omni kinematics, wheels at 90/210/330 deg)
+    # For pure spin: dx=dy=0. For pure X (right): dy=0. For pure Y (forward): dx=0.
+    dx_local = (2*changeFront - changeLeft - changeRight) / 3.0
+    dy_local = (changeLeft - changeRight) * sqrt3Inverse  # 1/sqrt(3)
 
-    x += deltaX
-    y += deltaY
+    x += dx_local * math.cos(theta) - dy_local * math.sin(theta)
+    y += dx_local * math.sin(theta) + dy_local * math.cos(theta)
 
-    deltaTheta = (changeRight + changeFront + changeLeft) / (3 * distFromCenter)
+    # CW spin -> all encoders negative -> negation gives positive theta (CW = positive)
+    deltaTheta = -(changeFront + changeLeft + changeRight) / (3 * distFromCenter)
     theta += deltaTheta
+
+    print("Pose updated: x={:.2f}mm y={:.2f}mm theta={:.2f}deg".format(x, y, math.degrees(theta)))
 
 # Check for outside boundary when calling move-to
 def checkBoundary():
@@ -190,7 +194,8 @@ def checkFaults():
         return True
     return False
 
-def spin_in_place(speed, direction):
+def spin_in_place(speed, direction, duration):
+    start = time.ticks_ms()
     if direction == 'cw':
         moveFrontCw(speed)
         moveRightCw(speed)
@@ -199,6 +204,10 @@ def spin_in_place(speed, direction):
         moveFrontCw(-speed)
         moveRightCw(-speed)
         moveLeftCw(-speed)
+    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
+        update_pose()
+    stopSpin()
+    update_pose()
 
 def spin_to_angle(target_angle, speed):
     global theta
@@ -228,6 +237,7 @@ def backward(speed, duration):
         moveRightCw(speed)
         moveFrontCw(0)
     stopSpin()
+    update_pose()
 
 def forward(speed, duration):
     start = time.ticks_ms()
@@ -236,6 +246,7 @@ def forward(speed, duration):
         moveRightCw(-speed)
         moveFrontCw(0)
     stopSpin()
+    update_pose()
 
 def right(speed, duration):
     start = time.ticks_ms()
@@ -244,6 +255,7 @@ def right(speed, duration):
         moveRightCw(int(-speed*0.67))
         moveFrontCw(int(speed))
     stopSpin()
+    update_pose()
 
 def left(speed, duration):
     start = time.ticks_ms()
@@ -252,6 +264,7 @@ def left(speed, duration):
         moveRightCw(int(speed*0.7))
         moveFrontCw(int(-speed))
     stopSpin()
+    update_pose()
 
 def backward_right(speed, duration):
     start = time.ticks_ms()
@@ -260,6 +273,7 @@ def backward_right(speed, duration):
         moveRightCw(int(speed*0.725)) #emperically derive
         moveFrontCw(int(speed*0.85))
     stopSpin()
+    update_pose()
 
 def backward_left(speed, duration):
     start = time.ticks_ms()
@@ -268,6 +282,7 @@ def backward_left(speed, duration):
         moveRightCw(speed)
         moveFrontCw(int(-speed*0.85))
     stopSpin()
+    update_pose()
 
 def forward_right(speed, duration):
     start = time.ticks_ms()
@@ -276,6 +291,7 @@ def forward_right(speed, duration):
         moveRightCw(-speed)
         moveFrontCw(int(speed*0.85))
     stopSpin()
+    update_pose()
 
 def forward_left(speed, duration):
     start = time.ticks_ms()
@@ -284,6 +300,7 @@ def forward_left(speed, duration):
         moveRightCw(int(speed*0.7))
         moveFrontCw(int(-speed*0.85))
     stopSpin()
+    update_pose()
 
 #Main code
 print("=== STARTUP ===")
@@ -293,13 +310,14 @@ enableMotors()
 print("[startup] resetting encoders and pose")
 resetEncoders()
 resetPose()
+print("Current Pose: x={:.2f}mm y={:.2f}mm theta={:.2f}deg".format(x, y, math.degrees(theta)))
 print("[startup] FLT1={} FLT2={}".format(FLT1.value(), FLT2.value()))
 print("[startup] calling move_to right")
 
 try:
-    forward_left(60000, 0.75)
-    time.sleep(5)
-
+    spin_in_place(55000, 'cw', 1)
+    print("Encoder values: Left={} Front={} Right={}".format(encoder_l, encoder_f, encoder_r))
+    
     stopAll()
 
 except KeyboardInterrupt:

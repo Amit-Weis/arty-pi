@@ -209,26 +209,26 @@ def spin_in_place(speed, direction, duration):
     stopSpin()
     update_pose()
 
-def spin_to_angle(target_angle, speed):
-    global theta
-    if target_angle == 0 and temp_theta != 0:
-        temp_theta = target_angle-theta
-        while (temp_theta > 0.01 or temp_theta < -0.01) and not checkFaults():
-            if temp_theta > 0:
-                checkFaults()
-                while spin_in_place(speed, 'cw'):
-                    update_pose()
-                    temp_theta = target_angle-theta
-                    if temp_theta >= 0.01:
-                        break
-            else:
-                checkFaults()
-                while spin_in_place(speed, 'ccw'):
-                    update_pose()
-                    temp_theta = target_angle-theta
-                    if temp_theta <= -0.01:
-                        break
-            update_pose()
+def spin_to_angle(target_angle_deg, speed):
+    # target_angle_deg in degrees; tolerance ~1 degree
+    target_rad = math.radians(target_angle_deg)
+    tolerance  = math.radians(1.0)
+
+    error = target_rad - theta
+    if error > 0:
+        moveFrontCw(speed)
+        moveRightCw(speed)
+        moveLeftCw(speed)
+    else:
+        moveFrontCw(-speed)
+        moveRightCw(-speed)
+        moveLeftCw(-speed)
+
+    while abs(target_rad - theta) > tolerance and not checkFaults():
+        update_pose()
+
+    stopSpin()
+    update_pose()
 
 def backward(speed, duration):
     start = time.ticks_ms()
@@ -315,7 +315,7 @@ print("[startup] FLT1={} FLT2={}".format(FLT1.value(), FLT2.value()))
 print("[startup] calling move_to right")
 
 try:
-    spin_in_place(55000, 'cw', 1)
+    spin_to_angle(90, 55000)
     print("Encoder values: Left={} Front={} Right={}".format(encoder_l, encoder_f, encoder_r))
     
     stopAll()
@@ -323,4 +323,5 @@ try:
 except KeyboardInterrupt:
     print("=== STOPPED BY USER ===")
     stopAll()
+
 

@@ -221,7 +221,7 @@ def spin_to_angle(target_angle, speed):
                         break
             update_pose()
 
-def forward(speed, duration):
+def backward(speed, duration):
     start = time.ticks_ms()
     while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
         moveLeftCw(-speed)
@@ -229,7 +229,7 @@ def forward(speed, duration):
         moveFrontCw(0)
     stopSpin()
 
-def backward(speed, duration):
+def forward(speed, duration):
     start = time.ticks_ms()
     while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
         moveLeftCw(speed)
@@ -253,36 +253,36 @@ def left(speed, duration):
         moveFrontCw(int(-speed))
     stopSpin()
 
-def forward_right(speed, duration):
-    start = time.ticks_ms()
-    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
-        moveLeftCw(speed)
-        moveRightCw(0)
-        moveFrontCw(-speed)
-    stopSpin()
-
-def forward_left(speed, duration):
-    start = time.ticks_ms()
-    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
-        moveLeftCw(0)
-        moveRightCw(speed)
-        moveFrontCw(-speed)
-    stopSpin()
-
 def backward_right(speed, duration):
     start = time.ticks_ms()
     while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
         moveLeftCw(-speed)
-        moveRightCw(0)
-        moveFrontCw(-speed)
+        moveRightCw(int(speed*0.725)) #emperically derive
+        moveFrontCw(int(speed*0.85))
     stopSpin()
 
 def backward_left(speed, duration):
     start = time.ticks_ms()
     while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
-        moveLeftCw(0)
+        moveLeftCw(int(-speed*0.65))
+        moveRightCw(speed)
+        moveFrontCw(int(-speed*0.85))
+    stopSpin()
+
+def forward_right(speed, duration):
+    start = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
+        moveLeftCw(int(-speed*0.7))
         moveRightCw(-speed)
-        moveFrontCw(speed)
+        moveFrontCw(int(speed*0.85))
+    stopSpin()
+
+def forward_left(speed, duration):
+    start = time.ticks_ms()
+    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
+        moveLeftCw(speed)
+        moveRightCw(int(speed*0.7))
+        moveFrontCw(int(-speed*0.85))
     stopSpin()
 
 #Main code
@@ -297,7 +297,7 @@ print("[startup] FLT1={} FLT2={}".format(FLT1.value(), FLT2.value()))
 print("[startup] calling move_to right")
 
 try:
-    forward_right(60000, 1)
+    forward_left(60000, 0.75)
     time.sleep(5)
 
     stopAll()
@@ -305,3 +305,4 @@ try:
 except KeyboardInterrupt:
     print("=== STOPPED BY USER ===")
     stopAll()
+

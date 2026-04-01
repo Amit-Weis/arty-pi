@@ -10,15 +10,58 @@ gearRatio = 100.37
 ticksPerWheelRev = 626  # empirically measured: one full wheel revolution (Pololu 12CPR = quadrature, effective 6 counts/rev single-channel × ~104.3:1 actual ratio)
 bits = 65535
 sqrt3Inverse = 1.0 / math.sqrt(3)   # ≈ 0.5774
- 
-positionTolerance = 3.0   # mm — stop when this close
-slowDownRadius   = 20.0   # mm — start decelerating within this range
-minPWM           = 42000  # floor so motors don't stall at low duty
-
 pi = math.pi
+SQRT3_2 = math.sqrt(3) / 2.0
+
+positionTolerance = 3.0   # mm — stop when this close
+slowDownRadius   = 0.0   # mm — start decelerating within this range
+
 mmPerTick = (pi * wheelDiameter)/ticksPerWheelRev
 
-SQRT3_2 = math.sqrt(3) / 2.0
+
+#PID Controls/Clamps
+KP = 0.01  # very soft — saturates at ~100mm error
+KI = 0.0005
+KD = 0.002
+
+# Speed range: PID output [0,1] maps into [minSpeed, maxSpeed]
+# This creates a greatly exaggerated scaling factor vs raw PWM:
+# even a small PID output produces meaningful motor force (minSpeed floor),
+# and full output is capped at maxSpeed rather than the full 16-bit range.
+maxSpeed = bits   # 65535 — hard ceiling
+idealSpeed = 54500  # nominal cruise speed
+minSpeed  = 42000  # floor so motors don't stall
+
+# PID state
+pid_integral   = 0.0
+pid_prev_error = 0.0
+pid_prev_time  = 0
+
+def pid_reset():
+    global pid_integral, pid_prev_error, pid_prev_time
+    pid_integral   = 0.0
+    pid_prev_error = 0.0
+    pid_prev_time  = time.ticks_ms()
+
+def pid_compute(error):
+    global pid_integral, pid_prev_error, pid_prev_time
+    now = time.ticks_ms()
+    dt  = time.ticks_diff(now, pid_prev_time) / 1000.0
+    if dt <= 0:
+        dt = 0.001
+    pid_prev_time = now
+
+    pid_integral += error * dt
+    derivative    = (error - pid_prev_error) / dt
+    pid_prev_error = error
+
+    raw = KP * error + KI * pid_integral + KD * derivative
+    return max(0.0, min(1.0, raw))  # clamp to [0, 1]
+
+def pid_to_speed(throttle):
+    # Map [0,1] → [minSpeed, maxSpeed]
+    # Replaces the typical raw-PWM scaling with the defined speed range
+    return int(minSpeed + throttle * (maxSpeed - minSpeed))
 
 # Boundary Box (mm)
 x_min = -1000
@@ -194,113 +237,119 @@ def checkFaults():
         return True
     return False
 
-def spin_in_place(speed, direction, duration):
-    start = time.ticks_ms()
-    if direction == 'cw':
-        moveFrontCw(speed)
-        moveRightCw(speed)
-        moveLeftCw(speed)
-    elif direction == 'ccw':
-        moveFrontCw(-speed)
-        moveRightCw(-speed)
-        moveLeftCw(-speed)
-    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
+# Scale all wheel commands together so the smallest non-zero magnitude >= minSpeed
+# This preserves ratios between wheels rather than clamping each independently
+def _apply(vL, vF, vR):
+    vals = [vL, vF, vR]
+    mags = [abs(v) for v in vals if v != 0]
+    if mags:
+        min_mag = min(mags)
+        if min_mag < minSpeed:
+            scale = minSpeed / min_mag
+            vals = [int(v * scale) for v in vals]
+    moveLeftCw(vals[0])
+    moveFrontCw(vals[1])
+    moveRightCw(vals[2])
+
+# Apply wheel commands for a given direction at a given PID-computed speed
+def _drive(direction, speed):
+    if direction == 'forward':
+        _apply(speed,              0,                -speed)
+    elif direction == 'backward':
+        _apply(-speed,             0,                speed)
+    elif direction == 'right':
+        _apply(int(-speed*0.67),   speed,            int(-speed*0.67))
+    elif direction == 'left':
+        _apply(int(speed*0.7),     -speed,           int(speed*0.7))
+    elif direction == 'forward_right':
+        _apply(int(-speed*0.7),    int(speed*0.85),  -speed)
+    elif direction == 'forward_left':
+        _apply(speed,              int(-speed*0.85), int(speed*0.7))
+    elif direction == 'backward_right':
+        _apply(-speed,             int(speed*0.85),  int(speed*0.725))
+    elif direction == 'backward_left':
+        _apply(int(-speed*0.65),   int(-speed*0.85), speed)
+
+def _move(direction, target_mm):
+    pid_reset()
+    x_start = x
+    y_start = y
+    while not checkFaults():
+        traveled  = math.sqrt((x - x_start)**2 + (y - y_start)**2)
+        remaining = target_mm - traveled
+        if remaining < positionTolerance:
+            break
+        _drive(direction, pid_to_speed(pid_compute(remaining)))
         update_pose()
     stopSpin()
     update_pose()
 
-def spin_to_angle(target_angle_deg, speed):
-    # target_angle_deg in degrees; tolerance ~1 degree
+def spin_in_place(angle_deg, direction):
+    pid_reset()
+    target_rad = theta + math.radians(angle_deg) * (1 if direction == 'cw' else -1)
+    tolerance  = math.radians(1.0)
+    while not checkFaults():
+        error = abs(target_rad - theta)
+        if error < tolerance:
+            break
+        speed = pid_to_speed(pid_compute(math.degrees(error)))
+        if direction == 'cw':
+            moveFrontCw(speed);  moveRightCw(speed);  moveLeftCw(speed)
+        else:
+            moveFrontCw(-speed); moveRightCw(-speed); moveLeftCw(-speed)
+        update_pose()
+    stopSpin()
+    update_pose()
+
+def spin_to_angle(target_angle_deg):
+    pid_reset()
     target_rad = math.radians(target_angle_deg)
     tolerance  = math.radians(1.0)
-
-    error = target_rad - theta
-    if error > 0:
-        moveFrontCw(speed)
-        moveRightCw(speed)
-        moveLeftCw(speed)
-    else:
-        moveFrontCw(-speed)
-        moveRightCw(-speed)
-        moveLeftCw(-speed)
-
-    while abs(target_rad - theta) > tolerance and not checkFaults():
+    while not checkFaults():
+        error = target_rad - theta
+        if abs(error) < tolerance:
+            break
+        speed = pid_to_speed(pid_compute(abs(math.degrees(error))))
+        if error > 0:
+            moveFrontCw(speed);  moveRightCw(speed);  moveLeftCw(speed)
+        else:
+            moveFrontCw(-speed); moveRightCw(-speed); moveLeftCw(-speed)
         update_pose()
-
     stopSpin()
     update_pose()
 
-def backward(speed, duration):
-    start = time.ticks_ms()
-    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
-        moveLeftCw(-speed)
-        moveRightCw(speed)
-        moveFrontCw(0)
+def move_to_origin():
+    pid_reset()
+    while not checkFaults():
+        dist = math.sqrt(x * x + y * y)
+        if dist < positionTolerance:
+            break
+        speed = pid_to_speed(pid_compute(dist))
+        wx = -x / dist
+        wy = -y / dist
+        rx =  wx * math.cos(theta) + wy * math.sin(theta)
+        ry = -wx * math.sin(theta) + wy * math.cos(theta)
+        vF = rx
+        vL = -0.5 * rx + SQRT3_2 * ry
+        vR = -0.5 * rx - SQRT3_2 * ry
+        max_v = max(abs(vF), abs(vL), abs(vR))
+        if max_v > 0:
+            vF /= max_v; vL /= max_v; vR /= max_v
+        moveFrontCw(int(-vF * speed))
+        moveLeftCw(int(-vL * speed))
+        moveRightCw(int(-vR * speed))
+        update_pose()
     stopSpin()
     update_pose()
 
-def forward(speed, duration):
-    start = time.ticks_ms()
-    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
-        moveLeftCw(speed)
-        moveRightCw(-speed)
-        moveFrontCw(0)
-    stopSpin()
-    update_pose()
-
-def right(speed, duration):
-    start = time.ticks_ms()
-    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
-        moveLeftCw(int(-speed*0.67)) #empirically derive
-        moveRightCw(int(-speed*0.67))
-        moveFrontCw(int(speed))
-    stopSpin()
-    update_pose()
-
-def left(speed, duration):
-    start = time.ticks_ms()
-    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
-        moveLeftCw(int(speed*0.7)) #emperically derive
-        moveRightCw(int(speed*0.7))
-        moveFrontCw(int(-speed))
-    stopSpin()
-    update_pose()
-
-def backward_right(speed, duration):
-    start = time.ticks_ms()
-    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
-        moveLeftCw(-speed)
-        moveRightCw(int(speed*0.725)) #emperically derive
-        moveFrontCw(int(speed*0.85))
-    stopSpin()
-    update_pose()
-
-def backward_left(speed, duration):
-    start = time.ticks_ms()
-    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
-        moveLeftCw(int(-speed*0.65))
-        moveRightCw(speed)
-        moveFrontCw(int(-speed*0.85))
-    stopSpin()
-    update_pose()
-
-def forward_right(speed, duration):
-    start = time.ticks_ms()
-    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
-        moveLeftCw(int(-speed*0.7))
-        moveRightCw(-speed)
-        moveFrontCw(int(speed*0.85))
-    stopSpin()
-    update_pose()
-
-def forward_left(speed, duration):
-    start = time.ticks_ms()
-    while time.ticks_diff(time.ticks_ms(), start) < duration * 1000:
-        moveLeftCw(speed)
-        moveRightCw(int(speed*0.7))
-        moveFrontCw(int(-speed*0.85))
-    stopSpin()
-    update_pose()
+def forward(target_mm):        _move('forward',       target_mm)
+def backward(target_mm):       _move('backward',      target_mm)
+def right(target_mm):          _move('right',         target_mm)
+def left(target_mm):           _move('left',          target_mm)
+def forward_right(target_mm):  _move('forward_right', target_mm)
+def forward_left(target_mm):   _move('forward_left',  target_mm)
+def backward_right(target_mm): _move('backward_right',target_mm)
+def backward_left(target_mm):  _move('backward_left', target_mm)
 
 #Main code
 print("=== STARTUP ===")
@@ -315,7 +364,7 @@ print("[startup] FLT1={} FLT2={}".format(FLT1.value(), FLT2.value()))
 print("[startup] calling move_to right")
 
 try:
-    spin_to_angle(90, 55000)
+    spin_to_angle(90)
     print("Encoder values: Left={} Front={} Right={}".format(encoder_l, encoder_f, encoder_r))
     
     stopAll()
